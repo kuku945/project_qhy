@@ -1,0 +1,11 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<root name="history">
+        <content>
+                <schedulers>
+                        <scheduler name="point">aa</scheduler>
+                        <scheduler name="time">bb</scheduler>
+                </schedulers>
+        </content>
+</root>
