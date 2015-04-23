@@ -1,0 +1,9 @@
+操作系统使用 UBUNTU LINUX 版本12.04
+gcc版本4.6.3
+
+编译命令分别为
+gcc -I /usr/local/include/libxml2 -L/usr/local/lib -lxml2  -lm  -o interface interface.c -lcurses -lxml2
+
+
+gcc -I /usr/local/include/libxml2 -L/usr/local/lib -lxml2  -lm  -o scheduler scheduler.c  -lxml2
+

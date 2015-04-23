@@ -21,6 +21,7 @@ void initial()
 }
 void menu_display(int selected_index)
 {
+	clear();
 	int i;
 	move(1,menu_left_margin);
 	printw("JOB Scheduler --");
@@ -43,7 +44,65 @@ void menu_display(int selected_index)
 }
 void New_Scheduler()
 {
-	printw("NEW");
+	char temp1[80];
+	char temp2[80];
+	echo();
+	printw("Please input your program's address ( a/b/c.sh ) \n");
+	scanw("%s",temp1);
+	printw("PLease input your scheduler's time ( 2015.5.10.23.43.1 )\n");
+	scanw("%s",temp2);
+	char *buf;
+        unsigned long len;
+        FILE *file;
+        if((file=fopen("scheduler.xml","r"))==NULL){
+                perror("openf file error");
+        }
+        fseek(file,0,SEEK_END);
+        len=ftell(file);
+        rewind(file);
+        buf=(char *)malloc(len+1);
+        memset(buf,0,len+1);
+        fread(buf,1,len,file);
+        fclose(file);
+	xmlDocPtr doc;
+        xmlNodePtr root,node,detail;
+        xmlChar *name,*value;
+        doc=xmlParseMemory(buf,len);    
+        if(doc==NULL){
+                printw("doc == null\n");
+                
+        }
+        root=xmlDocGetRootElement(doc);
+        for(node=root->children;node;node=node->next){
+                if(xmlStrcasecmp(node->name,BAD_CAST"content")==0)
+                        break;
+        }
+        if(node==NULL){
+                printw("no node = content\n");
+                
+        }
+	xmlNodePtr node_schedulers=xmlNewNode(NULL,BAD_CAST"schedulers");
+	xmlAddChild(node,node_schedulers);
+	xmlNodePtr node_scheduler1=xmlNewNode(NULL,BAD_CAST"scheduler");
+	xmlNodePtr content1=xmlNewText((xmlChar*)temp1);
+	xmlAddChild(node_schedulers,node_scheduler1);
+	xmlAddChild(node_scheduler1,content1);
+	xmlNewProp(node_scheduler1,BAD_CAST"name",BAD_CAST"point");
+
+	xmlNodePtr node_scheduler2=xmlNewNode(NULL,BAD_CAST"scheduler");
+	xmlNodePtr content2=xmlNewText((xmlChar*)temp2);
+	xmlAddChild(node_schedulers,node_scheduler2);
+	xmlAddChild(node_scheduler2,content2);
+	xmlNewProp(node_scheduler2,BAD_CAST"name",BAD_CAST"time");
+	xmlKeepBlanksDefault(0);
+	xmlIndentTreeOutput=1;
+	xmlSaveFile("scheduler.xml",doc);
+        xmlFreeDoc(doc);
+	printw("Add success,Please input to return");
+
+
+	getch();
+	return;
 }
 void History()
 {
@@ -95,6 +154,11 @@ void History()
                 }
         }
         xmlFreeDoc(doc);
+	printw("Please input to return");
+	getch();
+	return;
+	
+	
 }
 void main()
 {
@@ -129,14 +193,17 @@ void main()
 			switch(selected_index){
 			case 0:
 				New_Scheduler();
+				menu_display(selected_index);
 				break;
 			case 1:
 				History();
+				menu_display(selected_index);
 				break;
 			case 2:
 				printw("bye\n");
+				sleep(1);
 				endwin();
-				exit(0);
+				exit(1);
 			}
 		}
 	}
