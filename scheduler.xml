@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<root name="history">
+<root name="scheduler">
         <content>
                 <schedulers>
-                        <scheduler name="point">aa</scheduler>
-                        <scheduler name="time">bb</scheduler>
+                        <scheduler name="point">home/qhy/1.sh</scheduler>
+                        <scheduler name="time">2015.4.23.17.20.30</scheduler>
                 </schedulers>
        
-	<schedulers><scheduler name="point">a/b/c.sh</scheduler><scheduler name="time">2015.10.3.23.12</scheduler></schedulers></content>
+	</content>
 </root>
