@@ -45,6 +45,70 @@ int timechange(struct PROJECT *pro)             //转换时间类型
 	return 0;
 	
 }
+void DeleteScheduler(struct PROJECT *project)
+{
+	char *buf;
+        unsigned long len;
+        FILE *file;
+        if((file=fopen("scheduler.xml","r"))==NULL){
+                perror("openf file error");
+        }
+        fseek(file,0,SEEK_END);
+        len=ftell(file);
+        rewind(file);
+        buf=(char *)malloc(len+1);
+        memset(buf,0,len+1);
+        fread(buf,1,len,file);
+        fclose(file);
+	xmlDocPtr doc;
+        xmlNodePtr root,node,detail;
+        xmlChar *name,*value;
+        doc=xmlParseMemory(buf,len);    
+        if(doc==NULL){
+                printf("doc == null\n");
+                
+        }
+        root=xmlDocGetRootElement(doc);
+        for(node=root->children;node;node=node->next){
+                if(xmlStrcasecmp(node->name,BAD_CAST"content")==0)
+                        break;
+        }
+        if(node==NULL){
+                printf("no node = content\n");
+                
+        }
+        for(node=node->children;node;node=node->next){
+               if(xmlStrcasecmp(node->name,BAD_CAST"schedulers")==0){  
+			
+                        for(detail=node->children;detail;detail=detail->next){  
+                                if(xmlStrcasecmp(detail->name,BAD_CAST"scheduler")==0){
+                                        name=xmlGetProp(detail,BAD_CAST"name");
+                                        value=xmlNodeGetContent(detail);
+                                        if(strlen((char*)value)!=0){
+						if(xmlStrcasecmp(value,(xmlChar*)project->proj)==0)
+						{
+							xmlNodePtr tempNode;
+							tempNode=node->next;
+							xmlUnlinkNode(node);
+							xmlFreeNode(node);
+							node=tempNode;
+						}
+						
+                                         }else{
+                                  //              printf("%s has no value\n",(char*)name);
+                                        }
+                                        xmlFree(name);
+                                        xmlFree(value);
+                                }
+                        }
+                }
+        }
+        xmlKeepBlanksDefault(0);
+	xmlIndentTreeOutput=1;
+	xmlSaveFile("scheduler.xml",doc);
+	xmlFreeDoc(doc);
+	
+}
 Update(struct PROJECT *project)
 {
 	char *buf;
@@ -92,24 +156,35 @@ Update(struct PROJECT *project)
 	xmlNewProp(node_scheduler2,BAD_CAST"name",BAD_CAST"time");
 
 	xmlNodePtr node_scheduler3=xmlNewNode(NULL,BAD_CAST"scheduler");
-	xmlNodePtr content3=xmlNewText((xmlChar*)project->start);
+	xmlNodePtr content3;
+	if (project->start == 4)
+	{
+		content3 = xmlNewText(BAD_CAST"调度成功");
+	}
+	else if (project->start == 5)
+	{
+		content3 = xmlNewText(BAD_CAST"调度失败");
+	}
+	else if (project->start == 6)
+	{
+		content3 = xmlNewText(BAD_CAST"过期调度度计划");
+	}
 	xmlAddChild(node_schedulers,node_scheduler3);
 	xmlAddChild(node_scheduler3,content3);
 	xmlNewProp(node_scheduler3,BAD_CAST"name",BAD_CAST"condition");
 	xmlKeepBlanksDefault(0);
 	xmlIndentTreeOutput=1;
-	xmlSaveFile("scheduler.xml",doc);
-        xmlFreeDoc(doc);
-
-
-	
-	
+	xmlSaveFile("history.xml",doc);
+	xmlFreeDoc(doc);
 }
-Run_project(struct PROJECT *project)
+Run_project(struct PROJECT *project) //每秒判断需要进行修改
 {
-	Gettime();
 	struct PROJECT *temp=project;
 	struct PROJECT *head=project;
+	do{
+		Gettime();
+	}
+	while(project->time[5]<p->tm_sec);
 	while(temp->next!=NULL)
 	{	
 		temp=temp->next;
@@ -119,7 +194,6 @@ Run_project(struct PROJECT *project)
 			a="gnome-terminal -e ";
 			strcat(a,project->proj);
 			system(a);  
-			head->next=temp->next;
 			//记录并打开监视程序//
 
 
@@ -127,13 +201,11 @@ Run_project(struct PROJECT *project)
 			//	
 			temp->start++;
 			Update(temp);
-
-			free(temp);			
+			DeleteScheduler(temp);	
 		}
-		head=head->next;	
+		head=head->next;
+		
 	}
-	
-	
 }
 int infine(struct PROJECT *project,int i)                   //     确认当前时间内是否有计划
 {
@@ -145,21 +217,25 @@ int infine(struct PROJECT *project,int i)                   //     确认当前�
 		temp=temp->next;
 		switch(i)
 		{
-			case 0:
+			case 0:              //第一次解析
 				if((temp->time[0]== (1900+p->tm_year))&&(temp->time[1]==( 1+p->tm_mon))&&(temp->time[2]==p->tm_mday))
 				{
 					temp->start++;	
 					a=1;
+				}else if ((p->tm_year * 365 + p->tm_mon * 31 + p->tm_mday)>(temp->time[0] * 365 + temp->time[1] * 31 + temp->time[2]))
+				{
+					temp->start = 6;
+					DeleteScheduler(temp);
 				}
 				break;
-			case 3:
+			case 3:              //按小时判断
 				if(temp->time[3]== p->tm_hour)
 				{
 					temp->start++;
 					a=1;
 				}
 				break;
-			case 4:
+			case 4:              //按分钟判断
 				if(temp->time[4]== p->tm_min)
 				{
 					temp->start++;
@@ -172,14 +248,13 @@ int infine(struct PROJECT *project,int i)                   //     确认当前�
 
 	return a;
 }
+
 void GetScheduler(struct PROJECT *project)
 {
 	int i=0;
 	struct PROJECT *temp=project;
 	struct PROJECT *pro;
 	pro=(struct PROJECT *)malloc(sizeof(project));
-	pro->proj="aa";
-	pro->times="1223.32";
 	char *buf;
         unsigned long len;
         FILE *file;
@@ -240,7 +315,7 @@ void GetScheduler(struct PROJECT *project)
 						temp->next=pro;  
 						temp=temp->next; 
                                          }else{
-                                                printf("%s has no value\n",(char*)name);
+                                  //              printf("%s has no value\n",(char*)name);
                                         }
                                         xmlFree(name);
                                         xmlFree(value);
@@ -282,10 +357,7 @@ void run(struct PROJECT *project)
 							sleep(sle);
 						}else
 						{	
-							do{
-								Gettime();
-							}
-							while(project->time[5]<p->tm_sec);
+							
 							Run_project(project);
 							run(project);
 						}
