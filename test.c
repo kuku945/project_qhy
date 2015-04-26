@@ -1,25 +1,31 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<unistd.h>
-struct Node
-{
-	int num;
-	struct Node* next;
-};
-void main()
-{
-	struct Node* a;
-	a=(struct Node*)malloc(sizeof(struct Node));
-	a->num=1;
-	a->next=NULL;
-	struct Node* b;
-	b=(struct Node*)malloc(sizeof(struct Node));
-	b->num=2;
-b->next=NULL;
-	a->next=b;
-	struct Node* c=a;
-	c=c->next;
-	c->num=3;
-	printf("%d\n",a->num);
-	printf("%d\n",a->next->num);
+#include <unistd.h>  
+#include <sys/types.h>  
+#include <stdio.h>  
+#include <stdlib.h>  
+  
+int main()  
+{  
+    pid_t pid = fork();  
+    int stat = 0;  
+    switch(pid)  
+    {  
+    case -1:  
+        perror("fork failed");  
+        exit(1);  
+        break;  
+    case 0:  
+        printf("%d\n",getpid());  
+        execl("/home/qhy/1.sh", "1.sh", "au", (char*)0);  
+        break;  
+    default:  
+        pid = wait(&stat);  
+        printf("Child has finished: PID = %d\n", pid);   
+        if(WIFEXITED(stat))  
+            printf("Child exited with code %d\n", WEXITSTATUS(stat));  
+        else  
+            printf("Child terminated abnormally\n");  
+        printf("Parent, ps Done\n");  
+        break;  
+    }  
+    exit(0);  
 }
