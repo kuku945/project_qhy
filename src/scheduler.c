@@ -52,11 +52,10 @@ int timechange(struct PROJECT *pro)             //转换时间类型
 }
 
 void GetScheduler(struct PROJECT *project)
-{
+{	
 	int i=0;
 	struct PROJECT *temp=project;
-	struct PROJECT *pro;
-	pro=(struct PROJECT *)malloc(sizeof(project));
+	
 	char *buf;
         unsigned long len;
         FILE *file;
@@ -74,6 +73,7 @@ void GetScheduler(struct PROJECT *project)
         xmlNodePtr root,node,detail;
         xmlChar *name,*value;
         doc=xmlParseMemory(buf,len);    
+	
         if(doc==NULL){
                 printf("doc == null\n");
                 
@@ -87,23 +87,26 @@ void GetScheduler(struct PROJECT *project)
                 printf("no node = content\n");
                 
         }
-        for(node=node->children;node;node=node->next){
-               if(xmlStrcasecmp(node->name,BAD_CAST"schedulers")==0){  
-			
-                        for(detail=node->children;detail;detail=detail->next){  
-                                if(xmlStrcasecmp(detail->name,BAD_CAST"scheduler")==0){
-                                        name=xmlGetProp(detail,BAD_CAST"name");
-                                        value=xmlNodeGetContent(detail);
-                                        if(strlen((char*)value)!=0){
+        for(node=node->children;node;node=node->next)
+	{
+               if(xmlStrcasecmp(node->name,BAD_CAST"schedulers")==0)
+		{  
+			struct PROJECT *pro=(struct PROJECT *)malloc(sizeof(project));
+                        for(detail=node->children;detail;detail=detail->next)
+			{  
+				if(xmlStrcasecmp(detail->name,BAD_CAST"scheduler")==0)
+				{
+					name=xmlGetProp(detail,BAD_CAST"name");
+					value=xmlNodeGetContent(detail);
+					if(strlen((char*)value)!=0)
+					{
 						if(i==0)
 						{
-							
 							pro->proj=(char*)malloc(strlen(value)+1);
 							memset(pro->proj,'\0',sizeof(value));
 							memcpy(pro->proj,value,strlen(value)+1);
 						}else if(i==1)
 						{
-							
 							pro->times=(char*)malloc(strlen(value)+1);
 							memset(pro->times,'\0',sizeof(value));
 							memcpy(pro->times,value,strlen(value)+1);
@@ -114,20 +117,22 @@ void GetScheduler(struct PROJECT *project)
 						{
 							i=0;
 						}
-						pro->next=NULL;
-						temp->next=pro;  
-					//	temp=temp->next; 
-                                         }else{
-                                  //              printf("%s has no value\n",(char*)name);
-                                        }
+					}
                                         xmlFree(name);
                                         xmlFree(value);
                                 }
                         }
-                }
-        }
-        xmlFreeDoc(doc);
+		
+			pro->next=NULL;
 	
+			temp->next=pro;  
+
+			temp=temp->next; 
+
+                }
+
+        }
+			
 }
 
 void DeleteScheduler(struct PROJECT *project)
@@ -185,7 +190,6 @@ void DeleteScheduler(struct PROJECT *project)
 							xmlIndentTreeOutput=1;
 							xmlSaveFile("scheduler.xml",doc);
 							xmlFreeDoc(doc);
-							printf("1\n");
 							return;
 						}
 						
@@ -263,11 +267,9 @@ void Update(struct PROJECT *project)
 	xmlSaveFile("history.xml",doc);
 	xmlFreeDoc(doc);
 
-	printf("3\n");
 }
 Run_project(struct PROJECT *project) 
 {
-	printf("halo\n");
 	Gettime();
 	int min=p->tm_min;
 	struct PROJECT *temp=project;
@@ -279,14 +281,33 @@ Run_project(struct PROJECT *project)
 			temp=temp->next;
 			if((p->tm_sec==temp->time[5])&&(temp->start==3))
 			{
-				char * a=(char*)malloc(strlen("gnome-terminal -e")+strlen(project->proj)+1);
-				a="gnome-terminal -e ";
-				strcat(a,project->proj);
-				system(a);  
+		//		char * a=(char*)malloc(strlen("gnome-terminal -e")+strlen(project->proj)+1);
+				temp->start++;
+		//		a="gnome-terminal -e ";
+		//		strcat(a,project->proj);
+		//		system(a);  
 				//记录并打开监视程序//
-	
-
-	
+				pid_t pid = fork();  
+				int stat = 5;  
+				switch(pid)  
+				{  
+					case -1:  
+						perror("fork failed");  
+						exit(1);  
+						break;  
+					case 0:  
+						while(execl(temp->proj, "1.sh", "au", (char*)0)!=0) 
+						{
+							stat--;
+							if(stat==0)
+							{
+								project->start++;
+								break;
+							}
+						}
+						break;  
+					
+   			    }  
 				//	
 				temp->start++;
 				Update(temp);
@@ -294,22 +315,26 @@ Run_project(struct PROJECT *project)
 			}
 			head=head->next;
 		}
-		Gettime();	
+		Gettime();
 	}
 }
 int judge(struct PROJECT *temp)
 {
 	Gettime();
-	int now=p->tm_year * yr + p->tm_mon * mh+ p->tm_mday*dy+ p->tm_hour*hr+p->tm_min*mn+ p->tm_sec;
-	int sche=temp->time[0] *yr + temp->time[1] * mh + temp->time[2]*dy + temp->time[3]*hr + temp->time[4]*mn + temp->time[5];
-	
-	if(now>sche)
+	if(((p->tm_year-2000)*365+p->tm_mon * 31+p->tm_mday)>((temp->time[0]-2000)*365+temp->time[1]*31+temp->time[2])))
 	{
-		return 0;                   //过期
-	}else
+		return 0;
+	}else if(((p->tm_year-2000)*365+p->tm_mon * 31+p->tm_mday)==((temp->time[0]-2000)*365+temp->time[1]*31+temp->time[2])))
 	{
-		return 1;
+		if(p->tm_hour>temp->time[3])
+		{
+			return 0;                   //过期
+		}else if(p->tm_min*60 + p->tm_sec>(temp->time[4]*60+temp->time[5]))	
+		{
+			return 0;
+		}
 	}
+	return 0;
 }
 int infine(struct PROJECT *project,int i)                   //     确认当前时间内是否有计划
 {
@@ -318,23 +343,19 @@ int infine(struct PROJECT *project,int i)                   //     确认当前�
 	Gettime();
 	while(temp->next!=NULL)
 	{
-		printf("judge\n");
 		temp=temp->next;
 		printf("%s\n",temp->times);
 		if(judge(temp)==0)
 		{
-			printf("out\n");
 			if(temp->start!=4)
 			{
 				temp->start = 6;
 				Update(temp);
-				printf("update\n");
 				DeleteScheduler(temp);
 			}
 			
 		}else
 		{
-		printf("in\n");
 		switch(i)
 		{
 			case 0:              //第一次解析
@@ -370,17 +391,14 @@ void run(struct PROJECT *project)
 	int sle=0;
 	while(1)
 	{	
-		printf("start0\n");
 		if(infine(project,0)==0)
 		{
 			
-			printf("start1\n");
 			Gettime();
 			sle=24*60*60-(p->tm_hour*60*60+p->tm_min*60+p->tm_sec);
 			sleep(sle);	
 		}else
 		{	
-			printf("start2\n");
 			while(1)
 			{
 				if(infine(project,3)==0)
@@ -391,7 +409,6 @@ void run(struct PROJECT *project)
 				}else
 				{
 					
-					printf("start\n");
 					while(1)
 					{
 						if(infine(project,4)==0)
@@ -426,7 +443,7 @@ void main()
 	project->next=NULL;
 	GetScheduler(project);
 //
-	printf("%s\n",project->next->times);
+
 	run(project);
 			
 }
